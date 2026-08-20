@@ -1,0 +1,322 @@
+{
+  "id": null,
+  "uid": "apps-overview",
+  "title": "Apps — Overview",
+  "description": "Dashboard genérico para cualquier app dada de alta en infra/observability/prometheus/targets/<proyecto>.json usando el kit de integrations/nestjs o integrations/express. Agregar un proyecto nuevo es solo crear ese archivo de target — no requiere tocar Grafana, aparece solo en el selector de arriba.",
+  "tags": ["apps", "generic"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "proyecto",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "query": { "query": "label_values(up{job=\"apps\"}, proyecto)", "refId": "StandardVariableQuery" },
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": false,
+        "multi": false,
+        "current": {}
+      }
+    ]
+  },
+  "panels": [
+    { "id": 100, "type": "row", "title": "📌 Estado general", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "panels": [] },
+
+    {
+      "id": 1, "type": "stat", "title": "Estado",
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{ "expr": "max(up{proyecto=\"$proyecto\"})", "instant": true, "refId": "A" }],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "value", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    },
+    {
+      "id": 2, "type": "stat", "title": "Uptime",
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{ "expr": "time() - process_start_time_seconds{proyecto=\"$proyecto\"}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none", "textMode": "value" }
+    },
+    {
+      "id": 4, "type": "stat", "title": "RPS total (1m)",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{ "expr": "sum(rate(http_requests_total{proyecto=\"$proyecto\"}[1m]))", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "textMode": "value" }
+    },
+    {
+      "id": 5, "type": "stat", "title": "Error rate 4xx (5m)",
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 5 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{
+        "expr": "sum(rate(http_requests_total{proyecto=\"$proyecto\", status_class=\"4xx\"}[5m])) / sum(rate(http_requests_total{proyecto=\"$proyecto\"}[5m]))",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.02 }, { "color": "red", "value": 0.1 }] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "textMode": "value" }
+    },
+    {
+      "id": 6, "type": "stat", "title": "Error rate 5xx (5m)",
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 5 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{
+        "expr": "sum(rate(http_requests_total{proyecto=\"$proyecto\", status_class=\"5xx\"}[5m])) / sum(rate(http_requests_total{proyecto=\"$proyecto\"}[5m]))",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.01 }, { "color": "red", "value": 0.05 }] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "textMode": "value" }
+    },
+    {
+      "id": 7, "type": "stat", "title": "p95 latencia (5m)",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 5 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{
+        "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{proyecto=\"$proyecto\"}[5m])) by (le))",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.5 }, { "color": "red", "value": 1.5 }] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "textMode": "value" }
+    },
+
+    { "id": 101, "type": "row", "title": "🌐 Tráfico HTTP", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 }, "panels": [] },
+
+    {
+      "id": 10, "type": "timeseries", "title": "Requests por segundo (por status class)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{
+        "expr": "sum(rate(http_requests_total{proyecto=\"$proyecto\"}[5m])) by (status_class)",
+        "legendFormat": "{{status_class}}", "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "2xx" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] },
+          { "matcher": { "id": "byRegexp", "options": "4xx" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }] },
+          { "matcher": { "id": "byRegexp", "options": "5xx" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] }
+        ]
+      }
+    },
+    {
+      "id": 11, "type": "timeseries", "title": "Requests por segundo (por método)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{
+        "expr": "sum(rate(http_requests_total{proyecto=\"$proyecto\"}[5m])) by (method)",
+        "legendFormat": "{{method}}", "refId": "A"
+      }],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] }
+    },
+    {
+      "id": 12, "type": "timeseries", "title": "Top 8 rutas por tráfico",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{
+        "expr": "topk(8, sum(rate(http_requests_total{proyecto=\"$proyecto\"}[5m])) by (route))",
+        "legendFormat": "{{route}}", "refId": "A"
+      }],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] }
+    },
+    {
+      "id": 13, "type": "table", "title": "Requests totales por ruta y status (1h)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{
+        "expr": "sum(increase(http_requests_total{proyecto=\"$proyecto\"}[1h])) by (route, status_code)",
+        "format": "table", "instant": true, "refId": "A"
+      }],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "route": "Ruta", "status_code": "Status", "Value": "Requests (1h)" } } }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "align": "auto" } }, "overrides": [] }
+    },
+
+    { "id": 102, "type": "row", "title": "⏱️ Latencia", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 }, "panels": [] },
+
+    {
+      "id": 20, "type": "timeseries", "title": "Latencia p50 / p95 / p99",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 27 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{proyecto=\"$proyecto\"}[5m])) by (le))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{proyecto=\"$proyecto\"}[5m])) by (le))", "legendFormat": "p95", "refId": "B" },
+        { "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{proyecto=\"$proyecto\"}[5m])) by (le))", "legendFormat": "p99", "refId": "C" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] }
+    },
+    {
+      "id": 21, "type": "heatmap", "title": "Distribución de latencia (heatmap)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 27 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{
+        "expr": "sum(rate(http_request_duration_seconds_bucket{proyecto=\"$proyecto\"}[5m])) by (le)",
+        "format": "heatmap", "legendFormat": "{{le}}", "refId": "A"
+      }],
+      "options": { "calculate": false, "color": { "scheme": "Spectral", "mode": "scheme" } }
+    },
+
+    { "id": 103, "type": "row", "title": "❌ Errores", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 }, "panels": [] },
+
+    {
+      "id": 30, "type": "timeseries", "title": "Tasa de errores (4xx vs 5xx)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "sum(rate(http_requests_total{proyecto=\"$proyecto\", status_class=\"4xx\"}[5m]))", "legendFormat": "4xx", "refId": "A" },
+        { "expr": "sum(rate(http_requests_total{proyecto=\"$proyecto\", status_class=\"5xx\"}[5m]))", "legendFormat": "5xx", "refId": "B" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "4xx" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }] },
+          { "matcher": { "id": "byName", "options": "5xx" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] }
+        ]
+      }
+    },
+    {
+      "id": 31, "type": "table", "title": "Top rutas con errores 5xx (1h)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{
+        "expr": "topk(10, sum(increase(http_requests_total{proyecto=\"$proyecto\", status_class=\"5xx\"}[1h])) by (route))",
+        "format": "table", "instant": true, "refId": "A"
+      }],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "route": "Ruta", "Value": "Errores 5xx (1h)" } } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "color-background" } },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "transparent", "value": null }, { "color": "red", "value": 1 }] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 32, "type": "table", "title": "Errores 4xx por código exacto y ruta (1h) — 400, 401, 404, 409, etc.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 44 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{
+        "expr": "topk(20, sum(increase(http_requests_total{proyecto=\"$proyecto\", status_class=\"4xx\"}[1h])) by (status_code, route))",
+        "format": "table", "instant": true, "refId": "A"
+      }],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "status_code": "Código", "route": "Ruta", "Value": "Ocurrencias (1h)" } } },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "Ocurrencias (1h)", "desc": true }] } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "color-background" } },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "transparent", "value": null }, { "color": "orange", "value": 1 }] }
+        },
+        "overrides": []
+      }
+    },
+
+    { "id": 104, "type": "row", "title": "⚙️ Runtime / Proceso", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 52 }, "panels": [] },
+
+    {
+      "id": 40, "type": "timeseries", "title": "CPU (segundos/seg)",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 53 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{ "expr": "rate(process_cpu_seconds_total{proyecto=\"$proyecto\"}[5m])", "legendFormat": "cpu", "refId": "A" }]
+    },
+    {
+      "id": 41, "type": "timeseries", "title": "Memoria (RSS vs Heap)",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 53 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "process_resident_memory_bytes{proyecto=\"$proyecto\"}", "legendFormat": "RSS", "refId": "A" },
+        { "expr": "nodejs_heap_size_used_bytes{proyecto=\"$proyecto\"}", "legendFormat": "Heap usado", "refId": "B" },
+        { "expr": "nodejs_heap_size_total_bytes{proyecto=\"$proyecto\"}", "legendFormat": "Heap total", "refId": "C" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] }
+    },
+    {
+      "id": 42, "type": "timeseries", "title": "Event loop lag",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 53 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{ "expr": "nodejs_eventloop_lag_seconds{proyecto=\"$proyecto\"}", "legendFormat": "lag", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] }
+    },
+    {
+      "id": 43, "type": "stat", "title": "File descriptors abiertos",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 61 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{ "expr": "process_open_fds{proyecto=\"$proyecto\"}", "refId": "A" }],
+      "options": { "colorMode": "value", "graphMode": "none", "textMode": "value" }
+    },
+    {
+      "id": 44, "type": "stat", "title": "Handles activos (Node)",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 61 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{ "expr": "nodejs_active_handles_total{proyecto=\"$proyecto\"}", "refId": "A" }],
+      "options": { "colorMode": "value", "graphMode": "none", "textMode": "value" }
+    },
+    {
+      "id": 45, "type": "stat", "title": "Requests activas (max 1h)",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 61 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{ "expr": "max_over_time(sum(http_active_requests{proyecto=\"$proyecto\"})[1h:])", "refId": "A" }],
+      "options": { "colorMode": "value", "graphMode": "none", "textMode": "value" }
+    },
+    {
+      "id": 46, "type": "stat", "title": "Total requests (24h)",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 61 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [{ "expr": "sum(increase(http_requests_total{proyecto=\"$proyecto\"}[24h]))", "refId": "A" }],
+      "options": { "colorMode": "value", "graphMode": "none", "textMode": "value" }
+    },
+
+    { "id": 105, "type": "row", "title": "📜 Logs en vivo", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 65 }, "panels": [] },
+
+    {
+      "id": 50, "type": "logs", "title": "Logs (sin filtro — filtrá desde acá con label/status/texto)",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 66 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [{ "expr": "{container=\"$proyecto\"}", "refId": "A" }],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogLines": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    }
+  ]
+}

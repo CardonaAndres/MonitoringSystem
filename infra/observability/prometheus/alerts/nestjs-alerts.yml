@@ -1,0 +1,29 @@
+groups:
+  - name: nestjs_api_alerts
+    rules:
+      - alert: NestjsApiDown
+        expr: up{job="nestjs-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "🚨 Backend API de Eligex está Caído"
+          description: "La instancia {{ $labels.instance }} del backend no responde a los chequeos de Prometheus desde hace más de 2 minutos."
+
+      - alert: HighMemoryUsage
+        expr: (process_resident_memory_bytes{job="nestjs-api"} / 1024 / 1024) > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ Alto consumo de memoria RAM en NestJS"
+          description: "El proceso de NestJS está usando {{ $value | printf \"%.2f\" }}MB de RAM (umbral: 500MB)."
+
+      - alert: EventLoopLagHigh
+        expr: nodejs_eventloop_lag_seconds{job="nestjs-api"} > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ Lag alto en el Event Loop de NodeJS"
+          description: "El lag del Event Loop supera los 100ms (actual: {{ $value | printf \"%.4f\" }}s)."

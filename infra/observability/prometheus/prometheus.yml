@@ -1,0 +1,66 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "/etc/prometheus/alerts/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "alertmanager:9093"
+
+scrape_configs:
+  # ─── Apps de cada empresa/proyecto ───
+  # Cada proyecto se agrega con un archivo JSON en ./targets (file_sd),
+  # sin tener que editar ni reiniciar este archivo (solo recarga de Prometheus).
+  # Ver targets/_example.json.
+  - job_name: "apps"
+    metrics_path: "/metrics"
+    file_sd_configs:
+      - files:
+          - "/etc/prometheus/targets/*.json"
+        refresh_interval: 30s
+    # Algunos targets sirven /metrics por HTTPS (ver label "scheme" en su
+    # JSON, ej. targets/orders-service.json). Sin insecure_skip_verify,
+    # falla porque el hostname interno del contenedor no matchea el CN
+    # del certificado.
+    tls_config:
+      insecure_skip_verify: true
+    relabel_configs:
+      # file_sd expone las "labels" del JSON directo (sin prefijo __meta_).
+      # Si el target trae label "scheme", se usa para decidir http/https.
+      - source_labels: [scheme]
+        target_label: __scheme__
+        regex: "(https?)"
+      - regex: "scheme"
+        action: labeldrop
+
+  # ─── Infra: host (CPU, RAM, disco, red) ───
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+        labels:
+          category: "infra"
+
+  # ─── Infra: contenedores Docker ───
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor:8080"]
+        labels:
+          category: "infra"
+
+  - job_name: "otel-collector"
+    static_configs:
+      - targets: ["otel-collector:8889"]
+        labels:
+          service: "otel-collector"
+
+  - job_name: "loki"
+    static_configs:
+      - targets: ["loki:3100"]
+
+  - job_name: "tempo"
+    static_configs:
+      - targets: ["tempo:3200"]

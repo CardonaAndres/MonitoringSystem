@@ -1,0 +1,18 @@
+apiVersion: 1
+
+providers:
+  - name: 'default'
+    orgId: 1
+    folder: 'Apps'
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 30
+    # Con esto en true, el JSON del repo solo se usa para la CREACIÓN
+    # inicial del dashboard. Si lo editás y guardás desde la UI de
+    # Grafana, esa versión queda en su base de datos y ya no se pisa en
+    # cada resync — el archivo del repo deja de tener efecto para ese
+    # dashboard salvo que vos mismo lo vuelvas a tocar.
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
